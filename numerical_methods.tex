@@ -11,28 +11,94 @@ Assume collisionless plasma, the evolution of distribution function of particle 
 
 A well known second order time integration technique called Strang splitting is applied to the Vlasov equation. This technique splits the Vlasov equation into two advection equations, one in the position space and the other in the velocity space.
 
-\begin{equation}
-	\label{eq:advection}
-	\begin{aligned}
-		\partial_t f + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s = 0 \\
-		\partial_t f + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
-	\end{aligned}
-\end{equation}
+\begin{align}
+	\label{eq:spatial_advection}
+	\partial_t f + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s = 0 \\
+	\label{eq:velocity_advection}
+	\partial_t f + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
+\end{align}
 
 Then update the two advection equations in the following orders:
 
 \begin{equation}
 	\label{eq:strang-splitting}
 	\begin{aligned}
-		f_s^{*}(\mathbf{x}, \mathbf{v})   & = f_s^n(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v})           \\
-		f_s^{**}(\mathbf{x}, \mathbf{v})  & = f_s^{*}(\mathbf{x}, , \mathbf{v}- (q_s\mathbf{E}/m_s)\Delta t/2) \\
-		f_s^{n+1}(\mathbf{x}, \mathbf{v}) & = f_s^{**}(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v})
+		f_s^{*}(\mathbf{x}, \mathbf{v})   & = f_s^n(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v}),           \\
+		f_s^{**}(\mathbf{x}, \mathbf{v})  & = f_s^{*}(\mathbf{x}, , \mathbf{v}- (q_s\mathbf{E}/m_s)\Delta t/2), \\
+		f_s^{n+1}(\mathbf{x}, \mathbf{v}) & = f_s^{**}(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v}).
 	\end{aligned}
 \end{equation}
 
 In each step, the advection update is performed using a 3rd-order PFC scheme.
 
 \subsection{PFC scheme for advection update}
+Notice that the spatial and velocity advection equations both take the form
+\begin{equation}
+	\partial_t f + \partial_x(vf) = 0,
+	\label{eq:advection_simplified}
+\end{equation}
+where $v$ denotes as velocity $\mathbf{v}$ in Eq.~(\ref{eq:spatial_advection}) or acceleration $q\mathbf{E}/m$ in Eq.~(\ref{eq:velocity_advection}). A PFC scheme is implemented to solve such advection equation.
+
+On a uniform cell-centered mesh defined on computational domain $[x_{\text{min}}, x_{\text{max}}]$. The cell centers are defined as $x_i = x_{\text{min}} + (i+1/2)\Delta x$, where $\Delta x$ is the cell size. We use $f_i^n=\int_{x_i-1/2}^{x_i+1/2} f(x,t^n)\dd x/\Delta x$ to denote the average distribution function at the $i$-th cell center and time step $n$.
+
+The PFC scheme updates the distribution function at the next time step, $f_i^{n+1}$, by tracing the characteristic line back to the previous time step, $t^n$,
+
+\begin{equation}
+	\int_{x_i-1/2}^{x_i+1/2} f(x, t^{n+1}) \dd x = \int_{x_i-1/2 - v\Delta t}^{x_i+1/2 - v\Delta t} f(x, t^n) \dd x.
+	\label{eq:trace_characteristic}
+\end{equation}
+
+Meaning that the cell-averaged distribution function at the next time step, $f_i^{n+1}$, can be evaluated by
+
+\begin{equation}
+	f_i^{n+1} = f_i^n + F_{i-1/2} - F_{i+1/2}.
+	\label{eq:distribution_update}
+\end{equation}
+where $F_{i-1/2} = \int_{x_i-1/2 - v\Delta t}^{x_i-1/2} f(x, t^n) \dd x/\Delta x$ and $F_{i+1/2}=\int_{x_i+1/2 - v\Delta t}^{x_i+1/2} f(x, t^n) \dd x/\Delta x$ are the fluxes through the cell left and right interfaces.
+
+The flux can approximated by a 3rd-order scheme,
+\begin{equation}
+	F_{i+1/2} = \begin{cases}
+		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j+1}^n - f_{j}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j}^n - f_{j-1}^n)\right), & \varphi > 0, \\
+		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j}^n - f_{j-1}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j+1}^n - f_{j}^n)\right), & \varphi < 0.
+	\end{cases}
+	\label{eq:flux_3rd_order}
+\end{equation}
+where $\varphi = v\Delta t/\Delta x$ is related to CFL number, and $j = i - \lfloor\varphi\rfloor$.
+
+To preserve positivity of the distribution function, a flux limiter described in \cite{liu2021conservative} is applied to the flux,
+\begin{equation}
+	\hat{F}_{i+1/2} = \varepsilon_{i+1/2} \left( F_{i+1/2} - f_{i+1/2} \right) + f_{i+1/2}.
+	\label{eq:modified_flux}
+\end{equation}
+
+The $\epsilon_{i+1/2} = \min(\epsilon_i^r, \epsilon_{i+1}^l)$, where
+\begin{equation}
+	\varepsilon_i^l =
+	\begin{cases}
+		\min\left(1, \delta_i^k/d_{i-1/2} \right), & d_{i-1/2} < 0 \text{ and } d_{i+1/2} < 0,     \\
+		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),        & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
+		1,                                         & \text{else},
+	\end{cases}
+	\label{eq:flux_limiter_left}
+\end{equation}
+
+\begin{equation}
+	\varepsilon_i^r =
+	\begin{cases}
+		\min\left(1, -\delta_i^k/d_{i+1/2} \right), & d_{i-1/2} \ge 0 \text{ and } d_{i+1/2} > 0,   \\
+		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),         & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
+		1,                                          & \text{else},
+	\end{cases}
+	\label{eq:flux_limiter_right}
+\end{equation}
+where $f_{i+1/2} = \varphi f_i^n$ is the first order flux, and $\epsilon_{i+1/2}\in[0,1]$ is the positivity-preserving limiter to ensure the positivity of the function $f_{i}^{n+1}$ in Eq.~(\ref{eq:distribution_update}). We denote $d_{i\pm1/2} = F_{i\pm1/2} - f_{i\pm1/2}$ and $p_i = d_{i−1/2} - d_{i+1/2} -\delta_i^n$.
+
+Finally, the new update scheme for the distribution function is
+\begin{equation}
+	f_i^{n+1} = f_i^n + \hat{F}_{i -1/2} - \hat{F}_{i+1/2}.
+	\label{eq:final_update}
+\end{equation}
 
 
 \subsection{Second-order immersed-boundary treatment for the Vlasov equation}
@@ -51,7 +117,7 @@ Given a range for extrapolation (shown in Figure), the coefficients, $c_0$, $c_1
 
 \begin{equation}
 	\min_{c_0,c_1,c_2} \sum_{k=1}^{N_F} (c_0x_k + c_1y_k + c_2 - f_k)^2
-	\label{eq:least-square-matrix}
+	\label{eq:least_square_matrix}
 \end{equation}
 where $N_F$ is the number of near-by fluid cells in the extrapolation range, and $f_k$ is the distribution function at the $k$-th near-by fluid cell.
 
