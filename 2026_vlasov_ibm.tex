@@ -1,0 +1,222 @@
+%% 
+%% Copyright 2007-2025 Elsevier Ltd
+%% 
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%% 
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.3 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.3 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%% 
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%% 
+%% Template article for Elsevier's document class `elsarticle'
+%% with numbered style bibliographic references
+%% SP 2008/03/01
+%% $Id: elsarticle-template-num.tex 272 2025-01-09 17:36:26Z rishi $
+%%
+%\documentclass[preprint,12pt]{elsarticle}
+\documentclass[final,1p,times,review]{elsarticle}
+
+%% Use the option review to obtain double line spacing
+%% \documentclass[authoryear,preprint,review,12pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn]{elsarticle}
+%% \documentclass[final,3p,times]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn]{elsarticle}
+%% \documentclass[final,5p,times]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+%% The amsmath package provides various useful equation environments.
+\usepackage{amsmath}
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+\usepackage{algorithm}
+\usepackage[caption=false]{subfig}
+\usepackage{subfloat}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{rotating}
+\usepackage{booktabs}   
+\usepackage{colortbl}  
+\usepackage{physics}  
+\usepackage{appendix}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers.
+%% \usepackage{lineno}
+
+\usepackage{lineno}
+% \linenumbers
+
+\journal{Journal of Computational Physics}
+
+\begin{document}
+
+\begin{frontmatter}
+
+	%% Title, authors and addresses
+
+	%% use the tnoteref command within \title for footnotes;
+	%% use the tnotetext command for theassociated footnote;
+	%% use the fnref command within \author or \affiliation for footnotes;
+	%% use the fntext command for theassociated footnote;
+	%% use the corref command within \author for corresponding author footnotes;
+	%% use the cortext command for theassociated footnote;
+	%% use the ead command for the email address,
+	%% and the form \ead[url] for the home page:
+	%% \title{Title\tnoteref{label1}}
+	%% \tnotetext[label1]{}
+	%% \author{Name\corref{cor1}\fnref{label2}}
+	%% \ead{email address}
+	%% \ead[url]{home page}
+	%% \fntext[label2]{}
+	%% \cortext[cor1]{}
+	%% \affiliation{organization={},
+	%%             addressline={},
+	%%             city={},
+	%%             postcode={},
+	%%             state={},
+	%%             country={}}
+	%% \fntext[label3]{}
+
+	\title{A unified second-order immersed-boundary and ghost-fluid method on a single Cartesian mesh for the Vlasov–Poisson system with complex boundaries}
+
+	%% use optional labels to link authors explicitly to addresses:
+	%% \author[label1,label2]{}
+	%% \affiliation[label1]{organization={},
+	%%             addressline={},
+	%%             city={},
+	%%             postcode={},
+	%%             state={},
+	%%             country={}}
+	%%
+	%% \affiliation[label2]{organization={},
+	%%             addressline={},
+	%%             city={},
+	%%             postcode={},
+	%%             state={},
+	%%             country={}}
+
+	\author[UVA]{Hunt Feng\fnref{hf_label}} %% Author name
+	\fntext[hf_label]{Visiting Researcher, University of Virginia}
+	% Hunt, if you need any other affiliations, feel free to add them below and then add back the label in front of your name
+
+	\author[UVA]{Haibo Dong\fnref{hd_label}} %% Author name
+	\fntext[hd_label]{Professor, University of Virginia}
+	%% Author affiliation
+
+
+	\author[UVA]{Chen Cui\corref{cor1}\fnref{cc_label}} %% Author name
+	\ead{cuichen@virginia.edu}
+	\fntext[cc_label]{Assistant Professor, University of Virginia}
+	\cortext[cor1]{Corresponding author}
+	%% Author affiliation
+
+
+	%% Author affiliation
+	\affiliation[UVA]{organization={Department of Mechanical and Aerospace Engineering, University of Virginia},%Department and Organization
+		addressline={122 Engineer's Way},
+		city={Charlottesville},
+		postcode={22904},
+		state={VA},
+		country={USA}}
+
+
+	%% Abstract
+	\begin{abstract}
+		Plasma-material interactions are critical to applications from electric propulsion and spacecraft charging to fusion divertor erosion and semiconductor fabrication. Predictive modeling requires high-fidelity, fully kinetic simulations that resolve the velocity distribution function (VDF) near complex boundaries. Particle-in-Cell (PIC) methods are widely used but suffer from noise and poor sampling of high-energy tails, where key plasma–surface processes occur. Grid-based Vlasov method avoids these issues by directly solving the VDF, but faces challenges imposing sharp, curved geometries on Cartesian meshes without costly local refinement.
+
+		We present a unified, second-order immersed-boundary framework for the 2D2V Vlasov-Poisson system on a single Cartesian grid. A ghost-fluid method enforces dielectric jump conditions between plasma and solid in the Poisson solver, while a sharp-interface ghost-cell scheme applies complex geometry conditions for the Vlasov equation without staircasing errors or dual meshes. Coupled with a Positive Flux Conserving semi-Lagrangian scheme, our method ensures charge conservation, VDF positivity, and relaxed CFL limits.
+
+		This approach enables accurate, noise-free kinetic simulations in complex geometries, resolving high-energy tails and near-wall structures. Results on classical plasma-dielectric cases demonstrate robust handling of curved boundaries, opening a practical path for Vlasov modeling in real-world applications.
+	\end{abstract}
+
+	%%Graphical abstract
+	%\begin{graphicalabstract}
+	%%\includegraphics{grabs}
+	%\end{graphicalabstract}
+
+	%%Research highlights
+	%\begin{highlights}
+	%\item Research highlight 1
+	%\item Research highlight 2
+	%\end{highlights}
+
+	%% Keywords
+	\begin{keyword}
+		%% keywords here, in the form: keyword \sep keyword
+
+		%% PACS codes here, in the form: \PACS code \sep code
+
+		%% MSC codes here, in the form: \MSC code \sep code
+		%% or \MSC[2008] code \sep code (2000 is the default)
+		Semi-Lagrangian scheme \sep Immersed boundary method \sep Vlasov-Poisson system \sep Ghost fluid method \sep Plasma-material interaction
+	\end{keyword}
+
+\end{frontmatter}
+
+%% Add \usepackage{lineno} before \begin{document} and uncomment 
+%% following line to enable line numbers
+%% \linenumbers
+
+%% main text
+%%
+\include{introduction}
+\include{governing_equations}
+\include{numerical_methods}
+\include{numerical_analysis}
+\include{numerical_verification}
+\include{application_study}
+\include{conclusion}
+
+
+
+%% If you have bib database file and want bibtex to generate the
+%% bibitems, please use
+%%
+%%  \bibliographystyle{elsarticle-num} 
+%%  \bibliography{<your bibdatabase>}
+\newpage
+\bibliographystyle{elsarticle_num}
+\bibliography{./ChenCui_Ref}
+
+%% else use the following coding to input the bibitems directly in the
+%% TeX file.
+
+%% Refer following link for more details about bibliography and citations.
+%% https://en.wikibooks.org/wiki/LaTeX/Bibliography_Management
+
+% \begin{thebibliography}{00}
+
+% %% For numbered reference style
+% %% \bibitem{label}
+% %% Text of bibliographic item
+
+% \bibitem{lamport94}
+%   Leslie Lamport,
+%   \textit{\LaTeX: a document preparation system},
+%   Addison Wesley, Massachusetts,
+%   2nd edition,
+%   1994.
+
+% \end{thebibliography}
+\end{document}
+
+\endinput
+%%
+%% End of file `elsarticle-template-num.tex'.

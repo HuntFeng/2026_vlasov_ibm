@@ -1,0 +1,72 @@
+\section{Unified IBM and GFM Numerical Method}
+Vlasolver solves the Vlasov-Poisson system. This solver consists of two components: The Vlasov solver and the Poisson solver.
+
+The Vlasov equation is descritized on a cell-centered Cartesian mesh. The technique of strang splitting is applied to the Vlasov equation. Hence the evolution of the particle distribution function can be approximated by updating the position and velocity advection equations. The advection step is evolved using a 3rd-order PFC (Positive Flux Conservative) scheme. Near the interface, a second-order immersed boundary method is applied to correct distribution of the Vlasov equation.
+
+Assume collisionless plasma, the evolution of distribution function of particle species, $s$, is described by the Vlasov equation,
+\begin{equation}
+	\label{eq:vlasov}
+	\partial_t f_s + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
+\end{equation}
+
+A well known second order time integration technique called Strang splitting is applied to the Vlasov equation. This technique splits the Vlasov equation into two advection equations, one in the position space and the other in the velocity space.
+
+\begin{equation}
+	\label{eq:advection}
+	\begin{aligned}
+		\partial_t f + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s = 0 \\
+		\partial_t f + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
+	\end{aligned}
+\end{equation}
+
+Then update the two advection equations in the following orders:
+
+\begin{equation}
+	\label{eq:strang-splitting}
+	\begin{aligned}
+		f_s^{*}(\mathbf{x}, \mathbf{v})   & = f_s^n(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v})           \\
+		f_s^{**}(\mathbf{x}, \mathbf{v})  & = f_s^{*}(\mathbf{x}, , \mathbf{v}- (q_s\mathbf{E}/m_s)\Delta t/2) \\
+		f_s^{n+1}(\mathbf{x}, \mathbf{v}) & = f_s^{**}(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v})
+	\end{aligned}
+\end{equation}
+
+In each step, the advection update is performed using a 3rd-order PFC scheme.
+
+\subsection{PFC scheme for advection update}
+
+
+\subsection{Second-order immersed-boundary treatment for the Vlasov equation}
+This immersed boundary method is applied to correct the distribution function at the ghost cells in the immersed object.
+
+In our simulation we assume absorbing interface, therefore the probability of particles going out of the immersed object is 0, i.e. $f(\mathbf{x}_G, \mathbf{v}) = 0$, if $\mathbf{v}\cdot\mathbf{n} > 0$.
+
+If $\mathbf{v}\cdot\mathbf{n} < 0$, the distribution function at the ghost cell, $f(\mathbf{x}_G, \mathbf{v})$, is extrapolated from the distribution function at the near-by fluid cells, using a first order multivariate polynomial,
+
+\begin{equation}
+	f(\mathbf{x}_G, \mathbf{v}) = \max(c_0x + c_1y + c_2, 0)
+	\label{eq:extrapolation}
+\end{equation}
+
+Given a range for extrapolation (shown in Figure), the coefficients, $c_0$, $c_1$ and $c_2$ are determined by the distribution function at near-by fluid cells, which are selected based on the shape of the immersed object. Then solving a least-square problem we can obtain the coefficients,
+
+\begin{equation}
+	\min_{c_0,c_1,c_2} \sum_{k=1}^{N_F} (c_0x_k + c_1y_k + c_2 - f_k)^2
+	\label{eq:least-square-matrix}
+\end{equation}
+where $N_F$ is the number of near-by fluid cells in the extrapolation range, and $f_k$ is the distribution function at the $k$-th near-by fluid cell.
+
+\subsection{Second-order ghost-fluid treatment for the Poisson equation}
+The Poisson equation is descritized on the same cell-centered Cartesian mesh using 2nd order central difference. Near the interface, the second-order ghost-fluid method is applied to object the correct coefficients of Laplacian differentiation matrix.
+
+The idea of ghost fluid method is to introduce ghost values on each side of the interface,$\phi^-$ and $\phi^+$. We will solve the ghost values such that the jump conditions for Poisson's equation at the interface is satisfied.
+
+\subsection{Coupling Scheme}
+The figure below shows the coupling scheme of the Vlasov solver and the Poisson solver. The Vlasov solver updates the distribution function, $f$, and calculates the charge density, $\rho$, which is then passed to the Poisson solver. The Poisson solver solves the Poisson equation and calculates the electric field, $\mathbf{E}$, which is then passed back to the Vlasov solver for the next time step.
+
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{figures/unified_coupling.png}
+	\caption{Distribution function and electric potential share the same Cartesian mesh.}
+	\label{fig:}
+\end{figure}
