@@ -8,7 +8,7 @@ Assume collisionless plasma, the evolution of distribution function of particle 
 Vlasolver solves the Vlasov-Poisson system by coupling two solvers: the Vlasov solver and the Poisson solver.
 
 \subsection{The unified coupling scheme}
-Let's introduce the cell-centered Cartesian mesh (Fig.~\ref{fig:unified_grid}), which is used for both the Vlasov solver and the Poisson solver.
+Let's introduce the cell-centered Cartesian mesh (Fig.~\ref{fig:unified_mesh}), which is used for both the Vlasov solver and the Poisson solver.
 
 The Vlasov equation is solved by a semi-Lagrangian method. The distribution function is updated by tracing the characteristic line back to the previous time step. On the cell-centered Cartesian mesh, the distribution function is defined at the cell centers. The distribution function at cell $(\mathbf{x}_i, \mathbf{v}_j)$ is defined as the average distribution function in the phase space cell centered at $(\mathbf{x}_i, \mathbf{v}_j)$, i.e.
 
