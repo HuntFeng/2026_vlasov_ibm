@@ -1,0 +1,269 @@
+\section{Unified IBM and GFM Numerical Method}
+Assume collisionless plasma, the evolution of distribution function of particle species, $s$, is described by the Vlasov equation,
+\begin{equation}
+	\label{eq:vlasov}
+	\partial_t f_s + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
+\end{equation}
+
+Vlasolver solves the Vlasov-Poisson system by coupling two solvers: the Vlasov solver and the Poisson solver.
+
+\subsection{The unified coupling scheme}
+Let's introduce the cell-centered Cartesian mesh (Fig.~\ref{fig:unified_mesh}), which is used for both the Vlasov solver and the Poisson solver.
+
+The Vlasov equation is solved by a semi-Lagrangian method. The distribution function is updated by tracing the characteristic line back to the previous time step. On the cell-centered Cartesian mesh, the distribution function is defined at the cell centers. The distribution function at cell $(\mathbf{x}_i, \mathbf{v}_j)$ is defined as the average distribution function in the phase space cell centered at $(\mathbf{x}_i, \mathbf{v}_j)$, i.e.
+
+\begin{equation}
+	f_{ij}^n = \int_{x_i-1/2}^{x_i+1/2}\int_{v_j-1/2}^{v_j+1/2} f(\mathbf{x}, \mathbf{v}, t^n)\dd x\dd v/\Delta x\Delta v.
+	\label{eq:distribution_function_definition}
+\end{equation}
+
+The PFC Vlasov solver is formulated from a finite-volume perspective, in which the primary unknown is the cell-averaged distribution function. In practice, the algorithm advances the corresponding cell-centered degrees of freedom directly, without explicit evaluation of cell integrals during each update.
+
+On the other hand, the Poisson equation is solved by a finite difference method and the electric potential is also defined at the same cell-centered mesh, which simplifies the coupling between the two solvers.
+
+Fig.~\ref{fig:unified_mesh} shows the unified mesh of the Vlasov solver and the Poisson solver. Fig.~\ref{fig:coupling_scheme} shows the unified coupling scheme. The Vlasov solver updates the distribution function, $f$, and calculates the charge density, $\rho$, which is then passed to the Poisson solver. The Poisson solver solves the Poisson equation and calculates the electric field, $\mathbf{E}$, which is then passed back to the Vlasov solver for the next time step.
+
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{figures/unified_mesh.png}
+	\caption{Distribution function and electric potential share the same Cartesian mesh.}
+	\label{fig:unified_mesh}
+\end{figure}
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{figures/coupling_scheme.png}
+	\caption{An oversimplified coupling scheme.}
+	\label{fig:coupling_scheme}
+\end{figure}
+
+
+\subsection{Vlasov solver}
+A well known second order time integration technique called Strang splitting is applied to the Vlasov equation. This technique splits the Vlasov equation into two advection equations, one in the position space and the other in the velocity space.
+
+\begin{align}
+	\label{eq:spatial_advection}
+	\partial_t f + \mathbf{v}_s\cdot\grad_{\mathbf{x}} f_s = 0 \\
+	\label{eq:velocity_advection}
+	\partial_t f + (q_s\mathbf{E}/m_s)\cdot\grad_{\mathbf{v}} f_s = 0
+\end{align}
+
+Then update the two advection equations in the following orders:
+
+\begin{equation}
+	\label{eq:strang-splitting}
+	\begin{aligned}
+		f_s^{*}(\mathbf{x}, \mathbf{v})   & = f_s^n(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v}),           \\
+		f_s^{**}(\mathbf{x}, \mathbf{v})  & = f_s^{*}(\mathbf{x}, , \mathbf{v}- (q_s\mathbf{E}/m_s)\Delta t/2), \\
+		f_s^{n+1}(\mathbf{x}, \mathbf{v}) & = f_s^{**}(\mathbf{x} - \mathbf{v}_s\Delta t/2, \mathbf{v}).
+	\end{aligned}
+\end{equation}
+
+In each step, the advection update is performed using a 3rd-order PFC scheme.
+
+\subsection{PFC scheme for advection update}
+Notice that the spatial and velocity advection equations both take the form
+\begin{equation}
+	\partial_t f + \partial_x(vf) = 0,
+	\label{eq:advection_simplified}
+\end{equation}
+where $v$ denotes as velocity $\mathbf{v}$ in Eq.~(\ref{eq:spatial_advection}) or acceleration $q\mathbf{E}/m$ in Eq.~(\ref{eq:velocity_advection}). A PFC scheme is implemented to solve such advection equation.
+
+On a uniform cell-centered mesh defined on computational domain $[x_{\text{min}}, x_{\text{max}}]$. The cell centers are defined as $x_i = x_{\text{min}} + (i+1/2)\Delta x$, where $\Delta x$ is the cell size. We use $f_i^n=\int_{x_i-1/2}^{x_i+1/2} f(x,t^n)\dd x/\Delta x$ to denote the average distribution function at the $i$-th cell center and time step $n$.
+
+The PFC scheme updates the distribution function at the next time step, $f_i^{n+1}$, by tracing the characteristic line back to the previous time step, $t^n$,
+
+\begin{equation}
+	\int_{x_i-1/2}^{x_i+1/2} f(x, t^{n+1}) \dd x = \int_{x_i-1/2 - v\Delta t}^{x_i+1/2 - v\Delta t} f(x, t^n) \dd x.
+	\label{eq:trace_characteristic}
+\end{equation}
+
+Meaning that the cell-averaged distribution function at the next time step, $f_i^{n+1}$, can be evaluated by
+
+\begin{equation}
+	f_i^{n+1} = f_i^n + F_{i-1/2} - F_{i+1/2}.
+	\label{eq:distribution_update}
+\end{equation}
+where $F_{i-1/2} = \int_{x_i-1/2 - v\Delta t}^{x_i-1/2} f(x, t^n) \dd x/\Delta x$ and $F_{i+1/2}=\int_{x_i+1/2 - v\Delta t}^{x_i+1/2} f(x, t^n) \dd x/\Delta x$ are the fluxes through the cell left and right interfaces.
+
+The flux can approximated by a 3rd-order scheme,
+\begin{equation}
+	F_{i+1/2} = \begin{cases}
+		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j+1}^n - f_{j}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j}^n - f_{j-1}^n)\right), & \varphi > 0, \\
+		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j}^n - f_{j-1}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j+1}^n - f_{j}^n)\right), & \varphi < 0.
+	\end{cases}
+	\label{eq:flux_3rd_order}
+\end{equation}
+where $\varphi = v\Delta t/\Delta x$ is related to CFL number, and $j = i - \lfloor\varphi\rfloor$.
+
+To preserve positivity of the distribution function, a flux limiter described in \cite{liu2021conservative} is applied to the flux,
+\begin{equation}
+	\hat{F}_{i+1/2} = L_{i+1/2} \left( F_{i+1/2} - f_{i+1/2} \right) + f_{i+1/2}.
+	\label{eq:modified_flux}
+\end{equation}
+
+The $L_{i+1/2} = \min(L_i^r, L_{i+1}^l)$, where
+\begin{equation}
+	L_i^l =
+	\begin{cases}
+		\min\left(1, \delta_i^k/d_{i-1/2} \right), & d_{i-1/2} < 0 \text{ and } d_{i+1/2} < 0,     \\
+		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),        & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
+		1,                                         & \text{else},
+	\end{cases}
+	\label{eq:flux_limiter_left}
+\end{equation}
+
+\begin{equation}
+	L_i^r =
+	\begin{cases}
+		\min\left(1, -\delta_i^k/d_{i+1/2} \right), & d_{i-1/2} \ge 0 \text{ and } d_{i+1/2} > 0,   \\
+		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),         & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
+		1,                                          & \text{else},
+	\end{cases}
+	\label{eq:flux_limiter_right}
+\end{equation}
+
+where $f_{i+1/2} = \varphi f_i^n$ is the first order flux, and $\epsilon_{i+1/2}\in[0,1]$ is the positivity-preserving limiter to ensure the positivity of the function $f_{i}^{n+1}$ in Eq.~(\ref{eq:distribution_update}). We denote $d_{i\pm1/2} = F_{i\pm1/2} - f_{i\pm1/2}$ and $p_i = d_{i-1/2} - d_{i+1/2} -\delta_i^n$.
+
+Finally, the new update scheme for the distribution function is
+\begin{equation}
+	f_i^{n+1} = f_i^n + \hat{F}_{i -1/2} - \hat{F}_{i+1/2}.
+	\label{eq:final_update}
+\end{equation}
+
+
+\subsection{Second-order immersed-boundary treatment for the Vlasov equation}
+This immersed boundary method is applied to correct the distribution function at the ghost cells in the immersed object.
+
+The immersed-boundary $\Gamma$ is represented implicitly by a level set function $\eta(x,y)$ such that
+\begin{align}
+	\Gamma     & = \{ (x,y) : \eta(x,y) = 0 \},     \\
+	\Omega^\pm & = \{ (x,y) : \pm \eta(x,y) > 0 \}.
+\end{align}
+$\Omega^+$ and $\Omega^-$ are the exterior and interior of the immersed object, respectively.
+
+In our simulation we assume the immersed object is an conductor and hence having an absorbing interface. Therefore the probability of particles going out of the immersed object is 0, i.e. $f(\mathbf{x}_\Gamma, \mathbf{v}, t) = 0$, if $\mathbf{v}\cdot\mathbf{n} > 0$.
+
+For phase cells with $\mathbf{v}\cdot\mathbf{n} < 0$, the distribution function at the interface, $f(\mathbf{x}_\Gamma, \mathbf{v}, t)$, is extrapolated from the distribution function at the near-by fluid cells, using a first order multivariate polynomial.
+
+To satisfy the above immersed-boundary condition, we can fill the ghost cell values following the procedure.
+
+Given a range for extrapolation (Fig.~\ref{fig:immersed_boundary_2nd_order}), the coefficients, $c_0$, $c_1$ and $c_2$ are determined by the distribution function at near-by fluid cells, which are selected based on the shape of the immersed object. Then solving a least-square problem we can obtain the coefficients,
+
+\begin{equation}
+	\min_{c_0,c_1,c_2} \sum_{k=1}^{N_F} (c_0 + c_1x_k + c_2y_k - f_k)^2
+	\label{eq:least_square_matrix}
+\end{equation}
+where $N_F$ is the number of near-by fluid cells in the extrapolation range, and $f_k$ is the distribution function at the $k$-th near-by fluid cell.
+
+\begin{equation}
+	f(\mathbf{x}_G, \mathbf{v}, t) = \begin{cases}
+		0                              & , \mathbf{v}\cdot\mathbf{n} > 0, \\
+		\max(c_0 + c_1x_G + c_2y_G, 0) & , \mathbf{v}\cdot\mathbf{n} < 0.
+	\end{cases}
+	\label{eq:extrapolation}
+\end{equation}
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=0.7\textwidth]{figures/immersed_boundary_2nd_order.png}
+	\caption{The immersed boundary treatment for the Vlasov equation. The distribution function at the ghost cell, $f_G$, is extrapolated from the distribution function at near-by fluid cells, $f_k$, using a first order multivariate polynomial.}
+	\label{fig:immersed_boundary_2nd_order}
+\end{figure}
+
+
+\subsection{Second-order ghost-fluid treatment for the Poisson equation}
+
+We consider the elliptic interface problem on a 2D domain $\Omega \subset \mathbb{R}^2$:
+\begin{align}
+	\nabla \cdot (\epsilon \nabla \phi) & = f \quad \text{in } \Omega \setminus \Gamma, \\
+	[\phi]                              & = a \quad \text{on } \Gamma,                  \\
+	[\epsilon \partial_n \phi]          & = b \quad \text{on } \Gamma,
+\end{align}
+where $\Gamma$ is an interface separating $\Omega$ into $\Omega^+$ and $\Omega^-$, and $[q] = q^+ - q^-$ denotes the jump. The unit normal vector is computed by
+\begin{align}
+	\mathbf{n} = \frac{\nabla \eta}{|\nabla \eta|}.
+\end{align}
+
+Throughout the discussion, we assume $\epsilon$ is piecewise constant and $a,b$ are given functions defined on the interface. The normal vector is approximated by fourth-order central differences of the level set function $\eta$.
+
+\subsubsection{Finite Difference Discretization}
+
+Away from the interface, the equation is discretized using standard second-order central differences:
+\begin{align}
+	\frac{1}{\Delta x}
+	\left[
+		\epsilon_{i+\frac{1}{2},j} \frac{\phi_{i+1,j} - \phi_{i,j}}{\Delta x}
+		-
+		\epsilon_{i-\frac{1}{2},j} \frac{\phi_{i,j} - \phi_{i-1,j}}{\Delta x}
+		\right]
+	+ (\text{$y$-direction}) = f_{i,j}.
+\end{align}
+
+\subsubsection{Interface Treatment via Boundary Condition Capturing}
+
+When the interface cuts a grid stencil, the key idea is:
+\begin{itemize}
+	\item Replace missing values across the interface by reconstructed interface values.
+	\item Enforce jump conditions using local interpolation.
+\end{itemize}
+
+For each grid point $(i,j)$ near the interface, define four directional points:
+\begin{align}
+	x_R & = (x_i + \theta_R \Delta x, y_j), \quad
+	x_L = (x_i - \theta_L \Delta x, y_j),         \\
+	x_T & = (x_i, y_j + \theta_T \Delta y), \quad
+	x_B = (x_i, y_j - \theta_B \Delta y),
+\end{align}
+where $\theta \in (0,1]$ gives the fractional distance to the interface, computed from the level set function using quadratic interpolation.
+
+\subsubsection{Second-Order Interface Reconstruction}
+
+At an interface point (e.g. $x_R$), denote the one-sided values by $\phi^-_R$ and $u^+_R$. These are determined by enforcing:
+\begin{align}
+	[\phi](x_I)            & = a_I, \\
+	[\epsilon \phi_n](x_I) & = b_I,
+\end{align}
+where $a_I$ is approximated by cubic interpolation of $b_{i-1}, b_{i}, b_{i+1}, b_{i+2}$ and so is $b_I$.
+
+\subsubsection{2D Coupling of Jump Conditions}
+
+In 2D, jumps in Cartesian derivatives are related to normal/tangential jumps:
+\begin{align}
+	[\epsilon \phi_x] & = [\beta \phi_n] n_x - [\beta \phi_\tau] n_y, \\
+	[\epsilon \phi_y] & = [\beta \phi_n] n_y + [\beta \phi_\tau] n_x.
+\end{align}
+
+The method approximates:
+\begin{itemize}
+	\item $[\epsilon \phi_n]$ from given data,
+	\item $[\epsilon \phi_\tau]$ using tangential derivatives of $\phi$ and $a$.
+\end{itemize}
+
+These relations provide second-order accurate approximations for $[\epsilon \phi_x]$ and $[\beta \phi_y]$, which are then used in the finite difference stencil.
+
+\subsubsection{Modified Discrete Operator}
+
+The final discrete equation at $(i,j)$ becomes:
+\begin{align}
+	\frac{1}{\Delta x}
+	\left[
+		\epsilon_R \frac{\phi_R - \phi_{i,j}}{\theta_R \Delta x}
+		-
+		\epsilon_L \frac{\phi_{i,j} - \phi_L}{\theta_L \Delta x}
+		\right]
+	+
+	\frac{1}{\Delta y}
+	\left[
+		\epsilon_T \frac{\phi_T - \phi_{i,j}}{\theta_T \Delta y}
+		-
+		\epsilon_B \frac{\phi_{i,j} - \phi_B}{\theta_B \Delta y}
+		\right]
+	= f_{i,j},
+\end{align}
+where $\phi_R, \phi_L, \phi_T, \phi_B$ are either:
+\begin{itemize}
+	\item standard grid values (no interface crossing), or
+	\item reconstructed interface values using the above second-order procedure.
+\end{itemize}
