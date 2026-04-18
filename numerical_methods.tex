@@ -96,47 +96,43 @@ where $F_{i-1/2} = \int_{x_{i-1/2} - v\Delta t}^{x_{i-1/2}} f(x, t^n) \dd x/\Del
 The flux can approximated by a 3rd-order scheme,
 \begin{equation}
 	F_{i+1/2} = \begin{cases}
-		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j+1}^n - f_{j}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j}^n - f_{j-1}^n)\right), & \varphi > 0, \\
-		\abs{\varphi}\left( f_{j}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{j}^n - f_{j-1}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{j+1}^n - f_{j}^n)\right), & \varphi < 0.
+		\sum_{k=s+1}^i f_k^n + \varphi\left( f_{s}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{s+1}^n - f_{s}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{s}^n - f_{s-1}^n)\right),      & \varphi > 0, \\
+		-\sum_{k=i+1}^{s-1} f_k^n + \varphi\left( f_{s}^n + \frac{1}{6}(2 - \abs{\varphi})(1-\abs{\varphi})(f_{s}^n - f_{s-1}^n) + \frac{1}{6}(1 - \abs{\varphi})(1+\abs{\varphi})(f_{s+1}^n - f_{s}^n)\right), & \varphi < 0.
 	\end{cases}
 	\label{eq:flux_3rd_order}
 \end{equation}
-where $\varphi = v\Delta t/\Delta x$ is related to CFL number, and $j = i - \lfloor\varphi\rfloor$.
+where $\varphi = v\Delta t/\Delta x - [v\Delta t/\Delta x]$ is related to CFL number, and $s = i - \lfloor\varphi\rfloor$.
 
-To preserve positivity of the distribution function, a flux limiter described in \cite{liu2021conservative} is applied to the flux,
+To preserve positivity of the distribution function, a modified flux based on \cite{xiong2014high} is used.
 \begin{equation}
 	\hat{F}_{i+1/2} = L_{i+1/2} \left( F_{i+1/2} - f_{i+1/2} \right) + f_{i+1/2}.
 	\label{eq:modified_flux}
 \end{equation}
-
-The $L_{i+1/2} = \min(L_i^r, L_{i+1}^l)$, where
-\begin{equation}
-	L_i^l =
-	\begin{cases}
-		\min\left(1, \delta_i^k/d_{i-1/2} \right), & d_{i-1/2} < 0 \text{ and } d_{i+1/2} < 0,     \\
-		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),        & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
-		1,                                         & \text{else},
-	\end{cases}
-	\label{eq:flux_limiter_left}
-\end{equation}
-
-\begin{equation}
-	L_i^r =
-	\begin{cases}
-		\min\left(1, -\delta_i^k/d_{i+1/2} \right), & d_{i-1/2} \ge 0 \text{ and } d_{i+1/2} > 0,   \\
-		\delta_i^k/(d_{i-1/2} - d_{i+1/2}),         & d_{i-1/2} d_{i+1/2} < 0 \text{ and } p_i < 0, \\
-		1,                                          & \text{else},
-	\end{cases}
-	\label{eq:flux_limiter_right}
-\end{equation}
-
-where $f_{i+1/2} = \varphi f_i^n$ is the first order flux, and $\epsilon_{i+1/2}\in[0,1]$ is the positivity-preserving limiter to ensure the positivity of the function $f_{i}^{n+1}$ in Eq.~(\ref{eq:distribution_update}). We denote $d_{i\pm1/2} = F_{i\pm1/2} - f_{i\pm1/2}$ and $p_i = d_{i-1/2} - d_{i+1/2} -\delta_i^n$.
+The parameter $L_{i+1/2}$ is designed to ensure the positivity of the distribution function at the next time step, $f_i^{n+1}$, in Eq.~(\ref{eq:distribution_update}). The $f_{i+1/2} = \max(\varphi f_i, 0)$ is the boundary-aware first order upwind flux.
 
 Finally, the new update scheme for the distribution function is
 \begin{equation}
 	f_i^{n+1} = f_i^n + \hat{F}_{i -1/2} - \hat{F}_{i+1/2}.
 	\label{eq:final_update}
 \end{equation}
+
+To better describe the modified flux, let $d_{i\pm1/2} = F_{i\pm1/2} - f_{i\pm1/2}$, $\delta_i^n = 0 - (f_i^n + f_{i-1/2} - f_{i+1/2})$ and $p_i = d_{i-1/2} - d_{i+1/2} - \delta_i^n$. The parameter $L_{i+1/2} = \min(\Lambda_i^r, \Lambda_{i+1}^l)$, where $\Lambda_i^r, \Lambda_{i+1}^l$ are defined as follows,
+
+\begin{enumerate}
+	\item If $d_{i-1/2} \geq 0$ and $d_{i+1/2} \leq 0$,
+	      $$(\Lambda_i^l, \Lambda_{i+1}^r) = (1,1)$$.
+	\item If $d_{i-1/2} \geq 0$ and $d_{i+1/2} > 0$,
+	      $$(\Lambda_i^l,\Lambda_i^r) = \left(1, \min\left(1, \frac{\delta_i^n}{-d_{i+1/2}}\right) \right)$$.
+	\item If $d_{i-1/2} < 0$ and $d_{i+1/2} \leq 0$,
+	      $$(\Lambda_i^l, \Lambda_i^r) = \left(\min\left(1, \frac{\delta_i^n}{d_{i-1/2}}\right), 1 \right)$$.
+	\item If $d_{i-1/2} < 0$ and $d_{i+1/2} > 0$,
+	      \begin{itemize}
+		      \item If $p_i < 0$,
+		            $$(\Lambda_i^l, \Lambda_i^r) = \left(\frac{\delta_i^n}{d_{i-1/2} - d_{i+1/2}}, \frac{\delta_i^n}{(d_{i-1/2} - d_{i+1/2}}\right)$$.
+		      \item Else,
+		            $$(\Lambda_i^l, \Lambda_i^r) = (1,1)$$.
+	      \end{itemize}
+\end{enumerate}
 
 \subsection{Immersed boundary treatment for the Vlasov solver}
 
@@ -165,7 +161,7 @@ This directional treatment ensures consistency with the kinetic transport mechan
 
 Once the interface values are determined, ghost-cell values are reconstructed to complete the numerical stencil. As illustrated in Fig.~\ref{fig:ibm_2nd_order}, the ghost value is obtained by extrapolation using the nearby fluid cells.
 
-Given a range for extrapolation (Fig.~\ref{fig:ibm_2nd_order}), the coefficients, $c_0$, $c_1$ and $c_2$ are determined by the distribution function at near-by fluid cells, which are selected based on the shape of the immersed object. Then solving a least-square problem we can obtain the coefficients,
+Given a range for extrapolation (Fig.~\ref{fig:ibm_2nd_order}), the coefficients, $c_0$, $c_1$ and $c_2$ are determined by the distribution function at near-by fluid cells, which are selected based on the shape of the immersed object. We obtain the coefficients $c_0, c_1$ and $c_2$ by solving the least-square problem,
 
 \begin{equation}
 	\min_{c_0,c_1,c_2} \sum_{k=1}^{N_F} (c_0 + c_1x_k + c_2y_k - f_k)^2
@@ -173,11 +169,10 @@ Given a range for extrapolation (Fig.~\ref{fig:ibm_2nd_order}), the coefficients
 \end{equation}
 where $N_F$ is the number of near-by fluid cells in the extrapolation range, and $f_k$ is the distribution function at the $k$-th near-by fluid cell.
 
+For inflow directions, since we need to enforce zero-inflow condition on the boundary, the above least-square problem is solved with an additional constraint, $c_0 + c_1x_I + c_2y_I = 0$, where $(x_I, y_I) = \mathbf{x}_G - \eta\mathbf{n}$ is the coordinate of the interface point. The final extrapolation formula for ghost cells is given by
+
 \begin{equation}
-	f(\mathbf{x}_G, \mathbf{v}, t) = \begin{cases}
-		0                              & , \mathbf{v}\cdot\mathbf{n} > 0, \\
-		\max(c_0 + c_1x_G + c_2y_G, 0) & , \mathbf{v}\cdot\mathbf{n} < 0.
-	\end{cases}
+	f(\mathbf{x}_G, \mathbf{v}, t) = c_0 + c_1x_G + c_2y_G
 	\label{eq:extrapolation}
 \end{equation}
 
