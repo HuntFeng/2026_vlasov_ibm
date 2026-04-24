@@ -1,9 +1,72 @@
 \section{Numerical verification and validation}
 \subsection{Manufactured solution for the immersed Vlasov equation}
-Use linear advection convergence study to prove the accuracy proofed in 4.1
+\begin{figure}[htbp!]
+	\centering
+	\subfloat[Number density]{
+		\includegraphics[width=0.5\textwidth]{figures/advection_number_density.png}
+	}
+	\subfloat[Number density profiles]{
+		\includegraphics[width=0.5\textwidth]{figures/advection_number_density_profiles.png}
+	}
+	\label{fig:advection}
+\end{figure}
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=\textwidth]{figures/convergence_advection.png}
+	\caption{Convergence study shows second-order accuracy near the immersed boundary.}
+	\label{fig:advection_convergence}
+\end{figure}
+
+
 
 \subsection{Manufactured solution for the Poisson equation}
-Use Poisson convergence study to prove the accuracy proofed in 4.2
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=\textwidth]{figures/poisson_solution.png}
+	\caption{Numerical solution of the Poisson equation with manufactured solution.}
+	\label{fig:poisson_solution}
+\end{figure}
+
+\begin{figure}[htbp!]
+	\centering
+	\includegraphics[width=\textwidth]{figures/poisson_gradient.png}
+	\caption{Minus gradient of the Poisson solution.}
+	\label{fig:poisson_gradient}
+\end{figure}
+
+\begin{figure}[htbp!]
+	\includegraphics[width=0.95\textwidth]{figures/convergence_poisson.png}
+	\centering
+	\caption{Convergence study for the Poisson equation with manufactured solution.}
+	\label{fig:poisson_convergence}
+\end{figure}
+
+
 
 \subsection{Test benchmark}
-Sheath problem to show that the code actually work  (or other simple test)
+\subsubsection{Plasma past charged cylinder}
+\begin{figure}[htbp!]
+	\centering
+	\subfloat[Electric potential]{
+		\includegraphics[width=0.5\textwidth]{figures/cylinder_potential.png}
+	}
+	\subfloat[Ion number density]{
+		\includegraphics[width=0.5\textwidth]{figures/cylinder_number_density_ion.png}
+	}
+	\label{fig:cylinder}
+\end{figure}
+
+\subsection{Rough wall sheath problem}
+\begin{figure}[htbp!]
+	\centering
+	\subfloat[Electric potential]{
+		\includegraphics[width=0.5\textwidth]{figures/sheath_rough_wall_potential.png}
+	}
+	\subfloat[Electron number density]{
+		\includegraphics[width=0.5\textwidth]{
+			figures/sheath_rough_wall_number_density_electron.png
+		}
+	}
+	\label{fig:sheath_rough_wall}
+\end{figure}
