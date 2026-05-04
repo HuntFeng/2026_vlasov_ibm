@@ -46,6 +46,10 @@
 
 \subsection{Test benchmark}
 \subsubsection{Plasma past charged cylinder}
+We consider a 2D2V Vlasov-Poisson system, modeling a plasma flowing past an charged cylinder. The spatial domain is $(x,y)\in[0,L_x]\times[0,L_y]$, and the velocity domain is $(v_x,v_y)\in[-5v_{th,i},15v_{th,i}]\times[-7v_{th,i},7v_{th,i}]$. The phase space is discretized uniformly with $(n_x,n_y,n_{v_x},n_{v_y})=(160,50,120,50)$ interior cells and $n_{\mathrm{gc}}=3$ ghost cells in each direction. The time step is $\Delta t=5\times10^{-4}$ and the final time $t_{\text{final}}=0.15$. No particles in the domain initially and they are injected through the left boundary via a shifted Maxwellian in $v_x$ centered at $v_x=5v_{th,i}$. Zero inflow is imposed on the right boundary, and reflective boundary conditions are applied on the top and bottom.
+
+In this problem, the reference quantities are chosen to be $x_0 = L_x, m_0 = m_i, n_0 = 1\text{ m}^{-3}, k_BT_0=0.15\text{ eV}$. The charged cylinder is defined by $(x-0.375)^2 + y^2 = 0.125^2$. The cylinder is charged to $\phi = -20$ V and its permittivity is set to 1000 to mimic a conductor. The domain is vacuum so it has unity permittivity. The Poisson equation is solved with Dirichlet boundary conditions on the inflow boundary ($\phi=0$ at $x=0$) and homogeneous Neumann conditions elsewhere. 
+
 \begin{figure}[htbp!]
 	\centering
 	\subfloat[Electric potential]{
